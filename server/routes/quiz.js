@@ -29,6 +29,7 @@ router.get('/questions', (req, res) => {
     }));
     res.json(formattedQuestions);
   } catch (error) {
+    console.error('Erreur GET /questions:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -57,6 +58,7 @@ router.get('/questions/:id', (req, res) => {
       points: question.points
     });
   } catch (error) {
+    console.error('Erreur GET /questions/:id:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -64,25 +66,21 @@ router.get('/questions/:id', (req, res) => {
 // Soumettre les réponses d'un candidat
 router.post('/submit', (req, res) => {
   try {
-    const { candidateId, candidateName, email, answers, timeTaken } = req.body;
+    const { candidateId, candidateName, email, whatsapp, answers, timeTaken } = req.body;
     
     if (!candidateId || !answers || !Array.isArray(answers)) {
       return res.status(400).json({ error: 'Données invalides' });
     }
 
     const database = db.getDb();
-    const insertAnswer = database.prepare(`
-      INSERT INTO answers (candidate_id, question_id, answer, is_correct)
-      VALUES (?, ?, ?, ?)
-    `);
-
-    const getQuestion = database.prepare('SELECT correct_answer, points FROM questions WHERE id = ?');
     
     let totalScore = 0;
     let totalQuestions = answers.length;
 
     // Traiter chaque réponse
     for (const answer of answers) {
+      // Recréer la requête pour chaque question
+      const getQuestion = database.prepare('SELECT correct_answer, points FROM questions WHERE id = ?');
       getQuestion.bind([answer.questionId]);
       const questionResult = [];
       while (getQuestion.step()) {
@@ -92,15 +90,20 @@ router.post('/submit', (req, res) => {
       
       if (questionResult.length > 0) {
         const question = questionResult[0];
-        const isCorrect = answer.selectedAnswer === question.correct_answer;
+        const isCorrect = answer.selectedAnswer !== -1 && answer.selectedAnswer === question.correct_answer;
         if (isCorrect) {
           totalScore += question.points;
         }
+        
+        // Insérer la réponse
+        const insertAnswer = database.prepare(`
+          INSERT INTO answers (candidate_id, question_id, answer, is_correct)
+          VALUES (?, ?, ?, ?)
+        `);
         insertAnswer.run([candidateId, answer.questionId, answer.selectedAnswer, isCorrect ? 1 : 0]);
+        insertAnswer.free();
       }
     }
-
-    insertAnswer.free();
 
     // Vérifier si le candidat existe
     const checkCandidate = database.prepare('SELECT id FROM candidates WHERE id = ?');
@@ -123,10 +126,10 @@ router.post('/submit', (req, res) => {
       updateStmt.free();
     } else {
       const insertStmt = database.prepare(`
-        INSERT INTO candidates (id, name, email, score, total_questions, time_taken, completed_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO candidates (id, name, email, whatsapp, score, total_questions, time_taken, completed_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `);
-      insertStmt.run([candidateId, candidateName || 'Anonyme', email || null, totalScore, totalQuestions, timeTaken, now]);
+      insertStmt.run([candidateId, candidateName || 'Anonyme', email || null, whatsapp || null, totalScore, totalQuestions, timeTaken, now]);
       insertStmt.free();
     }
 
@@ -136,9 +139,10 @@ router.post('/submit', (req, res) => {
       success: true,
       score: totalScore,
       totalQuestions: totalQuestions,
-      percentage: Math.round((totalScore / (totalQuestions * 2)) * 100) // Approximation basée sur points moyens
+      percentage: totalQuestions > 0 ? Math.round((totalScore / (totalQuestions * 2)) * 100) : 0
     });
   } catch (error) {
+    console.error('Erreur POST /submit:', error);
     res.status(500).json({ error: error.message });
   }
 });

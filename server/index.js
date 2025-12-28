@@ -6,6 +6,8 @@ const path = require('path');
 const db = require('./database');
 const quizRoutes = require('./routes/quiz');
 const scoreRoutes = require('./routes/scores');
+const authRoutes = require('./routes/auth');
+const adminRoutes = require('./routes/admin');
 
 const app = express();
 const server = http.createServer(app);
@@ -26,6 +28,8 @@ app.use(express.static(path.join(__dirname, '../client/dist')));
 // Routes
 app.use('/api/quiz', quizRoutes);
 app.use('/api/scores', scoreRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Socket.io pour les mises à jour en temps réel
 io.on('connection', (socket) => {

@@ -1,6 +1,7 @@
 const initSqlJs = require('sql.js');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const dbPath = path.join(__dirname, 'quiz.db');
 let db = null;
@@ -36,13 +37,35 @@ const init = async () => {
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         email TEXT,
+        whatsapp TEXT,
+        password TEXT,
         score INTEGER DEFAULT 0,
         total_questions INTEGER DEFAULT 0,
         time_taken INTEGER DEFAULT 0,
         completed_at TEXT,
-        created_at TEXT
+        created_at TEXT,
+        is_admin INTEGER DEFAULT 0
       )
     `);
+    
+    // Ajouter la colonne whatsapp si elle n'existe pas (migration)
+    try {
+      db.run('ALTER TABLE candidates ADD COLUMN whatsapp TEXT');
+    } catch (e) {
+      // Colonne existe déjà, ignorer
+    }
+    
+    try {
+      db.run('ALTER TABLE candidates ADD COLUMN password TEXT');
+    } catch (e) {
+      // Colonne existe déjà, ignorer
+    }
+    
+    try {
+      db.run('ALTER TABLE candidates ADD COLUMN is_admin INTEGER DEFAULT 0');
+    } catch (e) {
+      // Colonne existe déjà, ignorer
+    }
 
     // Table des réponses
     db.run(`
@@ -102,6 +125,28 @@ const init = async () => {
       
       saveDb();
       console.log('✅ Questions d\'exemple insérées');
+    }
+
+    // Créer un admin par défaut si aucun admin n'existe
+    const adminCount = db.exec('SELECT COUNT(*) as count FROM candidates WHERE is_admin = 1');
+    if (adminCount.length > 0 && adminCount[0].values[0][0] === 0) {
+      const adminId = crypto.randomUUID();
+      const adminPassword = crypto.createHash('sha256').update('admin123').digest('hex');
+      const adminStmt = db.prepare(`
+        INSERT INTO candidates (id, name, email, whatsapp, password, is_admin, created_at)
+        VALUES (?, ?, ?, ?, ?, 1, ?)
+      `);
+      adminStmt.run([
+        adminId,
+        'Administrateur',
+        'admin@quiz.com',
+        '+33123456789',
+        adminPassword,
+        new Date().toISOString()
+      ]);
+      adminStmt.free();
+      saveDb();
+      console.log('✅ Admin par défaut créé (email: admin@quiz.com, password: admin123)');
     }
 
     console.log('✅ Base de données initialisée');

@@ -18,6 +18,11 @@ const Quiz = () => {
   const navigate = useNavigate()
 
   useEffect(() => {
+    const candidateId = localStorage.getItem('candidateId')
+    if (!candidateId) {
+      navigate('/login')
+      return
+    }
     loadQuestions()
     setTimeStarted(Date.now())
   }, [])
@@ -65,6 +70,13 @@ const Quiz = () => {
     const candidateId = localStorage.getItem('candidateId')
     const candidateName = localStorage.getItem('candidateName')
     const candidateEmail = localStorage.getItem('candidateEmail')
+    const candidateWhatsapp = localStorage.getItem('candidateWhatsapp')
+
+    if (!candidateId) {
+      alert('Veuillez vous connecter d\'abord')
+      navigate('/login')
+      return
+    }
 
     const answersArray = questions.map(q => ({
       questionId: q.id,
@@ -76,6 +88,7 @@ const Quiz = () => {
         candidateId,
         candidateName,
         email: candidateEmail,
+        whatsapp: candidateWhatsapp,
         answers: answersArray,
         timeTaken: timeElapsed
       })
@@ -84,7 +97,7 @@ const Quiz = () => {
       navigate(`/results/${candidateId}`)
     } catch (error) {
       console.error('Erreur lors de la soumission:', error)
-      alert('Erreur lors de la soumission du quiz')
+      alert(error.response?.data?.error || 'Erreur lors de la soumission du quiz')
     }
   }
 
