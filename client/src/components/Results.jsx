@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import axios from 'axios'
 import './Results.css'
@@ -7,12 +7,18 @@ import './Results.css'
 const Results = () => {
   const { candidateId } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const [result, setResult] = useState(null)
+  const [answerDetails, setAnswerDetails] = useState([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
+    // Récupérer les détails depuis l'état de navigation ou charger depuis l'API
+    if (location.state?.answerDetails) {
+      setAnswerDetails(location.state.answerDetails)
+    }
     loadResult()
-  }, [candidateId])
+  }, [candidateId, location])
 
   const loadResult = async () => {
     try {
@@ -58,6 +64,16 @@ const Results = () => {
     if (percentage >= 80) return 'Excellent ! 🎉'
     if (percentage >= 60) return 'Bien joué ! 👍'
     return 'Continuez vos efforts ! 💪'
+  }
+
+  const handleGoHome = () => {
+    const candidateId = localStorage.getItem('candidateId')
+    if (candidateId) {
+      const isAdmin = localStorage.getItem('isAdmin') === 'true'
+      navigate(isAdmin ? '/admin' : '/dashboard')
+    } else {
+      navigate('/')
+    }
   }
 
   return (
@@ -142,11 +158,60 @@ const Results = () => {
           </div>
         </motion.div>
 
+        {/* Détails des réponses */}
+        {answerDetails.length > 0 && (
+          <motion.div
+            className="answers-review"
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.8 }}
+          >
+            <h3>📋 Détail des Réponses</h3>
+            <div className="answers-list">
+              {answerDetails.map((detail, index) => (
+                <div
+                  key={detail.questionId}
+                  className={`answer-item ${detail.isCorrect ? 'correct' : 'incorrect'}`}
+                >
+                  <div className="answer-question">
+                    <strong>Question {index + 1}:</strong> {detail.questionText}
+                  </div>
+                  <div className="answer-options">
+                    {detail.options.map((opt, idx) => {
+                      const isSelected = detail.selectedAnswer === idx
+                      const isCorrect = detail.correctAnswer === idx
+                      return (
+                        <div
+                          key={idx}
+                          className={`answer-option ${isSelected ? 'selected' : ''} ${isCorrect ? 'correct-option' : ''} ${isSelected && !isCorrect ? 'wrong-option' : ''}`}
+                        >
+                          <span className="option-letter">{String.fromCharCode(65 + idx)}</span>
+                          <span className="option-text">{opt}</span>
+                          {isCorrect && <span className="correct-mark">✓ Correcte</span>}
+                          {isSelected && !isCorrect && <span className="wrong-mark">✗ Votre choix</span>}
+                          {isSelected && isCorrect && <span className="correct-mark">✓ Votre choix (Correct)</span>}
+                        </div>
+                      )
+                    })}
+                  </div>
+                  <div className="answer-result">
+                    {detail.isCorrect ? (
+                      <span className="result-correct">✓ Correct (+{detail.points} points)</span>
+                    ) : (
+                      <span className="result-incorrect">✗ Incorrect (0 point)</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
         <motion.div
           className="results-actions"
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.8 }}
+          transition={{ delay: 0.9 }}
         >
           <Link to="/leaderboard">
             <motion.button
@@ -159,11 +224,11 @@ const Results = () => {
           </Link>
           <motion.button
             className="action-button retry-button"
-            onClick={() => navigate('/')}
+            onClick={handleGoHome}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
-            🔄 Nouveau Quiz
+            🏠 Retour à l'accueil
           </motion.button>
         </motion.div>
       </motion.div>
@@ -172,5 +237,3 @@ const Results = () => {
 }
 
 export default Results
-
-

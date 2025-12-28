@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import axios from 'axios'
@@ -10,12 +10,17 @@ const socket = io('http://localhost:5000')
 
 const Quiz = () => {
   const [questions, setQuestions] = useState([])
+  const [showAnswers, setShowAnswers] = useState(false)
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [answers, setAnswers] = useState({})
   const [timeStarted, setTimeStarted] = useState(null)
   const [timeElapsed, setTimeElapsed] = useState(0)
+  const [timeLimit, setTimeLimit] = useState(0) // en secondes
+  const [timeRemaining, setTimeRemaining] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const navigate = useNavigate()
+  const autoSubmitRef = useRef(null)
 
   useEffect(() => {
     const candidateId = localStorage.getItem('candidateId')
@@ -23,26 +28,48 @@ const Quiz = () => {
       navigate('/login')
       return
     }
-    loadQuestions()
+    loadQuizData()
     setTimeStarted(Date.now())
   }, [])
 
   useEffect(() => {
     const interval = setInterval(() => {
       if (timeStarted) {
-        setTimeElapsed(Math.floor((Date.now() - timeStarted) / 1000))
+        const elapsed = Math.floor((Date.now() - timeStarted) / 1000)
+        setTimeElapsed(elapsed)
+        
+        if (timeLimit > 0) {
+          const remaining = timeLimit - elapsed
+          setTimeRemaining(remaining)
+          
+          if (remaining <= 0 && !isSubmitting) {
+            handleAutoSubmit()
+          }
+        }
       }
     }, 1000)
     return () => clearInterval(interval)
-  }, [timeStarted])
+  }, [timeStarted, timeLimit, isSubmitting])
 
-  const loadQuestions = async () => {
+  const loadQuizData = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/quiz/questions')
-      setQuestions(response.data)
+      const [questionsResponse, settingsResponse] = await Promise.all([
+        axios.get('http://localhost:5000/api/quiz/questions'),
+        axios.get('http://localhost:5000/api/quiz/settings')
+      ])
+      
+      const questionsData = questionsResponse.data.questions || questionsResponse.data
+      setQuestions(Array.isArray(questionsData) ? questionsData : [])
+      setShowAnswers(questionsResponse.data.showAnswers || false)
+      
+      if (settingsResponse.data.timeLimit > 0) {
+        setTimeLimit(settingsResponse.data.timeLimit * 60) // Convertir minutes en secondes
+        setTimeRemaining(settingsResponse.data.timeLimit * 60)
+      }
+      
       setIsLoading(false)
     } catch (error) {
-      console.error('Erreur lors du chargement des questions:', error)
+      console.error('Erreur lors du chargement:', error)
       setIsLoading(false)
     }
   }
@@ -66,17 +93,14 @@ const Quiz = () => {
     }
   }
 
-  const handleSubmit = async () => {
+  const handleAutoSubmit = async () => {
+    if (isSubmitting) return
+    setIsSubmitting(true)
+    
     const candidateId = localStorage.getItem('candidateId')
     const candidateName = localStorage.getItem('candidateName')
     const candidateEmail = localStorage.getItem('candidateEmail')
     const candidateWhatsapp = localStorage.getItem('candidateWhatsapp')
-
-    if (!candidateId) {
-      alert('Veuillez vous connecter d\'abord')
-      navigate('/login')
-      return
-    }
 
     const answersArray = questions.map(q => ({
       questionId: q.id,
@@ -94,11 +118,16 @@ const Quiz = () => {
       })
 
       socket.emit('submit-answer', { candidateId })
-      navigate(`/results/${candidateId}`)
+      navigate(`/results/${candidateId}`, { state: { answerDetails: response.data.answerDetails } })
     } catch (error) {
       console.error('Erreur lors de la soumission:', error)
       alert(error.response?.data?.error || 'Erreur lors de la soumission du quiz')
+      setIsSubmitting(false)
     }
+  }
+
+  const handleSubmit = async () => {
+    await handleAutoSubmit()
   }
 
   if (isLoading) {
@@ -131,7 +160,16 @@ const Quiz = () => {
   return (
     <div className="quiz-container">
       <div className="quiz-header">
-        <Timer timeElapsed={timeElapsed} />
+        <Timer 
+          timeElapsed={timeElapsed} 
+          timeLimit={timeLimit}
+          timeRemaining={timeRemaining}
+        />
+        {timeLimit > 0 && timeRemaining <= 60 && timeRemaining > 0 && (
+          <div className="time-warning">
+            ⚠️ Temps restant: {Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, '0')}
+          </div>
+        )}
         <div className="quiz-progress">
           <div className="progress-bar">
             <motion.div
@@ -155,19 +193,28 @@ const Quiz = () => {
           transition={{ duration: 0.3 }}
         >
           <h2 className="question-text">{currentQuestion.text}</h2>
+          {showAnswers && currentQuestion.correct_answer !== undefined && (
+            <div className="correct-answer-hint">
+              ✓ Réponse correcte: {String.fromCharCode(65 + currentQuestion.correct_answer)}
+            </div>
+          )}
           <div className="options-container">
             {currentQuestion.options.map((option, index) => {
               const isSelected = answers[currentQuestion.id] === index
+              const isCorrect = showAnswers && currentQuestion.correct_answer === index
+              const isWrong = showAnswers && isSelected && currentQuestion.correct_answer !== index
+              
               return (
                 <motion.button
                   key={index}
-                  className={`option-button ${isSelected ? 'selected' : ''}`}
+                  className={`option-button ${isSelected ? 'selected' : ''} ${isCorrect ? 'correct-answer' : ''} ${isWrong ? 'wrong-answer' : ''}`}
                   onClick={() => handleAnswerSelect(currentQuestion.id, index)}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1 }}
+                  disabled={isSubmitting}
                 >
                   <span className="option-letter">{String.fromCharCode(65 + index)}</span>
                   <span className="option-text">{option}</span>
@@ -181,6 +228,9 @@ const Quiz = () => {
                       ✓
                     </motion.span>
                   )}
+                  {isCorrect && (
+                    <span className="correct-badge">Correcte</span>
+                  )}
                 </motion.button>
               )
             })}
@@ -192,9 +242,9 @@ const Quiz = () => {
         <motion.button
           className="nav-button secondary"
           onClick={handlePrevious}
-          disabled={currentQuestionIndex === 0}
-          whileHover={{ scale: currentQuestionIndex === 0 ? 1 : 1.05 }}
-          whileTap={{ scale: currentQuestionIndex === 0 ? 1 : 0.95 }}
+          disabled={currentQuestionIndex === 0 || isSubmitting}
+          whileHover={{ scale: currentQuestionIndex === 0 || isSubmitting ? 1 : 1.05 }}
+          whileTap={{ scale: currentQuestionIndex === 0 || isSubmitting ? 1 : 0.95 }}
         >
           ← Précédent
         </motion.button>
@@ -207,17 +257,19 @@ const Quiz = () => {
           <motion.button
             className="nav-button primary submit-button"
             onClick={handleSubmit}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            disabled={isSubmitting}
+            whileHover={{ scale: isSubmitting ? 1 : 1.05 }}
+            whileTap={{ scale: isSubmitting ? 1 : 0.95 }}
           >
-            Terminer le Quiz ✓
+            {isSubmitting ? 'Envoi...' : 'Terminer le Quiz ✓'}
           </motion.button>
         ) : (
           <motion.button
             className="nav-button primary"
             onClick={handleNext}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            disabled={isSubmitting}
+            whileHover={{ scale: isSubmitting ? 1 : 1.05 }}
+            whileTap={{ scale: isSubmitting ? 1 : 0.95 }}
           >
             Suivant →
           </motion.button>
@@ -228,5 +280,3 @@ const Quiz = () => {
 }
 
 export default Quiz
-
-

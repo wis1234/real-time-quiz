@@ -35,7 +35,7 @@ const Login = () => {
         if (response.data.candidate.isAdmin) {
           navigate('/admin')
         } else {
-          navigate('/quiz')
+          navigate('/dashboard')
         }
       }
     } catch (error) {

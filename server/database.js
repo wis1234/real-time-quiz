@@ -44,28 +44,28 @@ const init = async () => {
         time_taken INTEGER DEFAULT 0,
         completed_at TEXT,
         created_at TEXT,
-        is_admin INTEGER DEFAULT 0
+        is_admin INTEGER DEFAULT 0,
+        max_attempts INTEGER DEFAULT -1,
+        attempts_count INTEGER DEFAULT 0
       )
     `);
     
-    // Ajouter la colonne whatsapp si elle n'existe pas (migration)
-    try {
-      db.run('ALTER TABLE candidates ADD COLUMN whatsapp TEXT');
-    } catch (e) {
-      // Colonne existe déjà, ignorer
-    }
+    // Migrations pour les nouvelles colonnes
+    const migrations = [
+      { sql: 'ALTER TABLE candidates ADD COLUMN whatsapp TEXT', name: 'whatsapp' },
+      { sql: 'ALTER TABLE candidates ADD COLUMN password TEXT', name: 'password' },
+      { sql: 'ALTER TABLE candidates ADD COLUMN is_admin INTEGER DEFAULT 0', name: 'is_admin' },
+      { sql: 'ALTER TABLE candidates ADD COLUMN max_attempts INTEGER DEFAULT -1', name: 'max_attempts' },
+      { sql: 'ALTER TABLE candidates ADD COLUMN attempts_count INTEGER DEFAULT 0', name: 'attempts_count' }
+    ];
     
-    try {
-      db.run('ALTER TABLE candidates ADD COLUMN password TEXT');
-    } catch (e) {
-      // Colonne existe déjà, ignorer
-    }
-    
-    try {
-      db.run('ALTER TABLE candidates ADD COLUMN is_admin INTEGER DEFAULT 0');
-    } catch (e) {
-      // Colonne existe déjà, ignorer
-    }
+    migrations.forEach(migration => {
+      try {
+        db.run(migration.sql);
+      } catch (e) {
+        // Colonne existe déjà, ignorer
+      }
+    });
 
     // Table des réponses
     db.run(`
@@ -77,6 +77,29 @@ const init = async () => {
         is_correct INTEGER DEFAULT 0
       )
     `);
+
+    // Table des paramètres du quiz
+    db.run(`
+      CREATE TABLE IF NOT EXISTS quiz_settings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        time_limit INTEGER DEFAULT 0,
+        show_answers INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Insérer les paramètres par défaut si la table est vide
+    const settingsCount = db.exec('SELECT COUNT(*) as count FROM quiz_settings');
+    if (settingsCount.length > 0 && settingsCount[0].values[0][0] === 0) {
+      const defaultSettings = db.prepare(`
+        INSERT INTO quiz_settings (time_limit, show_answers)
+        VALUES (0, 0)
+      `);
+      defaultSettings.run();
+      defaultSettings.free();
+      saveDb();
+    }
 
     // Insérer des questions d'exemple si la table est vide
     const questionCount = db.exec('SELECT COUNT(*) as count FROM questions');

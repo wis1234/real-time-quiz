@@ -48,7 +48,7 @@ router.post('/users', checkAdmin, (req, res) => {
   try {
     const result = db.exec(`
       SELECT id, name, email, whatsapp, score, total_questions, time_taken, 
-             completed_at, created_at, is_admin
+             completed_at, created_at, is_admin, max_attempts, attempts_count
       FROM candidates
       ORDER BY created_at DESC
     `);
@@ -57,6 +57,200 @@ router.post('/users', checkAdmin, (req, res) => {
     res.json(users);
   } catch (error) {
     console.error('Erreur GET /admin/users:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Créer un utilisateur
+router.post('/users/create', checkAdmin, (req, res) => {
+  try {
+    const { name, email, whatsapp, password, maxAttempts } = req.body;
+    
+    if (!name || !email || !whatsapp || !password) {
+      return res.status(400).json({ error: 'Tous les champs sont requis' });
+    }
+
+    const database = db.getDb();
+    const crypto = require('crypto');
+    
+    // Vérifier si l'email existe déjà
+    const checkEmail = database.prepare('SELECT id FROM candidates WHERE email = ?');
+    checkEmail.bind([email]);
+    const emailResult = [];
+    while (checkEmail.step()) {
+      emailResult.push(checkEmail.getAsObject());
+    }
+    checkEmail.free();
+    
+    if (emailResult.length > 0) {
+      return res.status(400).json({ error: 'Cet email est déjà utilisé' });
+    }
+
+    // Vérifier si le WhatsApp existe déjà
+    const checkWhatsapp = database.prepare('SELECT id FROM candidates WHERE whatsapp = ?');
+    checkWhatsapp.bind([whatsapp]);
+    const whatsappResult = [];
+    while (checkWhatsapp.step()) {
+      whatsappResult.push(checkWhatsapp.getAsObject());
+    }
+    checkWhatsapp.free();
+    
+    if (whatsappResult.length > 0) {
+      return res.status(400).json({ error: 'Ce numéro WhatsApp est déjà utilisé' });
+    }
+
+    const candidateId = crypto.randomUUID();
+    const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
+    const now = new Date().toISOString();
+    const maxAttemptsValue = maxAttempts === 'unlimited' ? -1 : parseInt(maxAttempts) || -1;
+
+    const insertStmt = database.prepare(`
+      INSERT INTO candidates (id, name, email, whatsapp, password, created_at, is_admin, max_attempts, attempts_count)
+      VALUES (?, ?, ?, ?, ?, ?, 0, ?, 0)
+    `);
+    insertStmt.run([candidateId, name, email, whatsapp, hashedPassword, now, maxAttemptsValue]);
+    insertStmt.free();
+
+    db.saveDb();
+
+    res.json({ success: true, message: 'Utilisateur créé avec succès' });
+  } catch (error) {
+    console.error('Erreur POST /admin/users/create:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Mettre à jour les tentatives max d'un utilisateur
+router.post('/users/update-attempts', checkAdmin, (req, res) => {
+  try {
+    const { userId, maxAttempts } = req.body;
+    
+    if (!userId || maxAttempts === undefined) {
+      return res.status(400).json({ error: 'Données invalides' });
+    }
+
+    const database = db.getDb();
+    const maxAttemptsValue = maxAttempts === 'unlimited' ? -1 : parseInt(maxAttempts) || -1;
+    
+    const updateStmt = database.prepare('UPDATE candidates SET max_attempts = ? WHERE id = ?');
+    updateStmt.run([maxAttemptsValue, userId]);
+    updateStmt.free();
+    
+    db.saveDb();
+    
+    res.json({ success: true, message: 'Limite de tentatives mise à jour' });
+  } catch (error) {
+    console.error('Erreur POST /admin/users/update-attempts:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Modifier un utilisateur
+router.post('/users/update', checkAdmin, (req, res) => {
+  try {
+    const { userId, name, email, whatsapp, password } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'ID utilisateur requis' });
+    }
+
+    const database = db.getDb();
+    const crypto = require('crypto');
+    
+    // Construire la requête de mise à jour dynamiquement
+    const updates = [];
+    const values = [];
+    
+    if (name) {
+      updates.push('name = ?');
+      values.push(name);
+    }
+    if (email) {
+      updates.push('email = ?');
+      values.push(email);
+    }
+    if (whatsapp) {
+      updates.push('whatsapp = ?');
+      values.push(whatsapp);
+    }
+    if (password) {
+      const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
+      updates.push('password = ?');
+      values.push(hashedPassword);
+    }
+    
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'Aucune donnée à mettre à jour' });
+    }
+    
+    values.push(userId);
+    const updateStmt = database.prepare(`UPDATE candidates SET ${updates.join(', ')} WHERE id = ?`);
+    updateStmt.run(values);
+    updateStmt.free();
+    
+    db.saveDb();
+    
+    res.json({ success: true, message: 'Utilisateur mis à jour' });
+  } catch (error) {
+    console.error('Erreur POST /admin/users/update:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Obtenir les paramètres du quiz
+router.post('/settings', checkAdmin, (req, res) => {
+  try {
+    const result = db.exec('SELECT * FROM quiz_settings ORDER BY id DESC LIMIT 1');
+    if (result.length > 0) {
+      const settings = resultToObjects(result)[0];
+      res.json(settings);
+    } else {
+      res.json({ time_limit: 0, show_answers: 0 });
+    }
+  } catch (error) {
+    console.error('Erreur GET /admin/settings:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Mettre à jour les paramètres du quiz
+router.post('/settings/update', checkAdmin, (req, res) => {
+  try {
+    const { timeLimit, showAnswers } = req.body;
+    
+    const database = db.getDb();
+    const now = new Date().toISOString();
+    
+    // Vérifier si des paramètres existent
+    const checkSettings = database.prepare('SELECT id FROM quiz_settings ORDER BY id DESC LIMIT 1');
+    const settingsResult = [];
+    while (checkSettings.step()) {
+      settingsResult.push(checkSettings.getAsObject());
+    }
+    checkSettings.free();
+    
+    if (settingsResult.length > 0) {
+      const updateStmt = database.prepare(`
+        UPDATE quiz_settings 
+        SET time_limit = ?, show_answers = ?, updated_at = ?
+        WHERE id = ?
+      `);
+      updateStmt.run([parseInt(timeLimit) || 0, showAnswers ? 1 : 0, now, settingsResult[0].id]);
+      updateStmt.free();
+    } else {
+      const insertStmt = database.prepare(`
+        INSERT INTO quiz_settings (time_limit, show_answers, created_at, updated_at)
+        VALUES (?, ?, ?, ?)
+      `);
+      insertStmt.run([parseInt(timeLimit) || 0, showAnswers ? 1 : 0, now, now]);
+      insertStmt.free();
+    }
+    
+    db.saveDb();
+    
+    res.json({ success: true, message: 'Paramètres mis à jour' });
+  } catch (error) {
+    console.error('Erreur POST /admin/settings/update:', error);
     res.status(500).json({ error: error.message });
   }
 });

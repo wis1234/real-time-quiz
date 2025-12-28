@@ -19,7 +19,7 @@
   font-size: 2.5rem;
   text-align: center;
   margin-bottom: 30px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #00b4d8 0%, #0077b6 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -51,7 +51,7 @@
 
 .form-group input:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #00b4d8;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
@@ -68,7 +68,7 @@
 .register-button {
   width: 100%;
   padding: 15px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #00b4d8 0%, #0077b6 100%);
   color: white;
   border: none;
   border-radius: 10px;
@@ -76,11 +76,11 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 4px 15px rgba(0, 180, 216, 0.4);
 }
 
 .register-button:hover:not(:disabled) {
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+  box-shadow: 0 6px 20px rgba(0, 180, 216, 0.6);
 }
 
 .register-button:disabled {
@@ -95,7 +95,7 @@
 }
 
 .register-footer a {
-  color: #667eea;
+  color: #00b4d8;
   text-decoration: none;
   font-weight: 600;
 }

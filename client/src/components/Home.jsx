@@ -13,7 +13,7 @@ const Home = () => {
       if (isAdmin) {
         navigate('/admin')
       } else {
-        navigate('/quiz')
+        navigate('/dashboard')
       }
     } else {
       navigate('/login')

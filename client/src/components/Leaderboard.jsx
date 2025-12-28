@@ -84,15 +84,22 @@ const Leaderboard = () => {
         {scores.length === 0 ? (
           <div className="no-scores">
             <p>Aucun résultat disponible pour le moment</p>
-            <Link to="/">
-              <motion.button
-                className="home-button"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                Commencer un Quiz
-              </motion.button>
-            </Link>
+            <motion.button
+              className="home-button"
+              onClick={() => {
+                const candidateId = localStorage.getItem('candidateId')
+                if (candidateId) {
+                  const isAdmin = localStorage.getItem('isAdmin') === 'true'
+                  navigate(isAdmin ? '/admin' : '/dashboard')
+                } else {
+                  navigate('/')
+                }
+              }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              Commencer un Quiz
+            </motion.button>
           </div>
         ) : (
           <div className="scores-list">
@@ -144,15 +151,22 @@ const Leaderboard = () => {
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.5 }}
         >
-          <Link to="/">
-            <motion.button
-              className="action-button"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              ← Retour à l'accueil
-            </motion.button>
-          </Link>
+          <motion.button
+            className="action-button"
+            onClick={() => {
+              const candidateId = localStorage.getItem('candidateId')
+              if (candidateId) {
+                const isAdmin = localStorage.getItem('isAdmin') === 'true'
+                navigate(isAdmin ? '/admin' : '/dashboard')
+              } else {
+                navigate('/')
+              }
+            }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            ← Retour à l'accueil
+          </motion.button>
         </motion.div>
       </motion.div>
     </div>

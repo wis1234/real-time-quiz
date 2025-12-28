@@ -18,7 +18,7 @@
 
 .admin-header h1 {
   margin: 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #00b4d8 0%, #0077b6 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -59,10 +59,10 @@
 }
 
 .admin-tabs button.active {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #00b4d8 0%, #0077b6 100%);
   color: white;
-  border-color: #667eea;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+  border-color: #00b4d8;
+  box-shadow: 0 4px 15px rgba(0, 180, 216, 0.4);
 }
 
 .admin-content {
@@ -72,8 +72,50 @@
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
 
-.users-table {
+.users-section {
+  width: 100%;
+}
+
+.add-user-btn {
+  padding: 15px 30px;
+  background: linear-gradient(135deg, #00b4d8 0%, #0077b6 100%);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 20px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0, 180, 216, 0.4);
+}
+
+.add-user-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 180, 216, 0.6);
+}
+
+.users-table-wrapper {
   overflow-x: auto;
+}
+
+.users-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.attempts-select {
+  padding: 6px 10px;
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.attempts-select:focus {
+  outline: none;
+  border-color: #00b4d8;
 }
 
 .users-table table {
@@ -121,7 +163,7 @@
 
 .add-question-btn {
   padding: 15px 30px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #00b4d8 0%, #0077b6 100%);
   color: white;
   border: none;
   border-radius: 10px;
@@ -130,7 +172,7 @@
   cursor: pointer;
   margin-bottom: 20px;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 4px 15px rgba(0, 180, 216, 0.4);
 }
 
 .add-question-btn:hover {
@@ -192,7 +234,7 @@
 
 .edit-btn {
   padding: 6px 12px;
-  background: #667eea;
+  background: #00b4d8;
   color: white;
   border: none;
   border-radius: 6px;
@@ -260,7 +302,7 @@
 .modal-content textarea:focus,
 .modal-content input:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #00b4d8;
 }
 
 .option-input-group {
@@ -287,7 +329,7 @@
 .save-btn {
   flex: 1;
   padding: 12px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #00b4d8 0%, #0077b6 100%);
   color: white;
   border: none;
   border-radius: 8px;
@@ -298,7 +340,7 @@
 
 .save-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 4px 15px rgba(0, 180, 216, 0.4);
 }
 
 .cancel-btn {
@@ -335,5 +377,117 @@
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+.user-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.settings-section {
+  padding: 20px;
+}
+
+.settings-section h2 {
+  margin-bottom: 25px;
+  color: #333;
+}
+
+.settings-form {
+  max-width: 600px;
+}
+
+.settings-form .form-group {
+  margin-bottom: 25px;
+}
+
+.settings-form label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.settings-form input[type="number"] {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 1rem;
+  margin-top: 8px;
+}
+
+.settings-form input[type="number"]:focus {
+  outline: none;
+  border-color: #00b4d8;
+}
+
+.settings-form input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+}
+
+.settings-form small {
+  display: block;
+  color: #666;
+  margin-top: 5px;
+  font-size: 0.9rem;
+}
+
+.save-settings-btn {
+  padding: 15px 30px;
+  background: linear-gradient(135deg, #00b4d8 0%, #0077b6 100%);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0, 180, 216, 0.4);
+}
+
+.save-settings-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 180, 216, 0.6);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .admin-header {
+    flex-direction: column;
+    gap: 15px;
+    text-align: center;
+  }
+
+  .admin-tabs {
+    flex-direction: column;
+  }
+
+  .users-table-wrapper {
+    overflow-x: scroll;
+  }
+
+  .users-table {
+    font-size: 0.85rem;
+  }
+
+  .users-table th,
+  .users-table td {
+    padding: 8px;
+  }
+
+  .questions-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-content {
+    padding: 20px;
+    margin: 10px;
+  }
 }
 

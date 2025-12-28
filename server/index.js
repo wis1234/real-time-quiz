@@ -8,6 +8,7 @@ const quizRoutes = require('./routes/quiz');
 const scoreRoutes = require('./routes/scores');
 const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
+const candidateRoutes = require('./routes/candidate');
 
 const app = express();
 const server = http.createServer(app);
@@ -30,6 +31,7 @@ app.use('/api/quiz', quizRoutes);
 app.use('/api/scores', scoreRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/candidate', candidateRoutes);
 
 // Socket.io pour les mises à jour en temps réel
 io.on('connection', (socket) => {
