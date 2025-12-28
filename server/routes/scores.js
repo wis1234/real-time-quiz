@@ -19,9 +19,10 @@ const resultToObjects = (result) => {
 router.get('/all', (req, res) => {
   try {
     const result = db.exec(`
-      SELECT id, name, email, score, total_questions, time_taken, completed_at,
+      SELECT id, name, email, score, total_questions, time_taken, completed_at, is_admin,
              ROUND(CAST(score AS FLOAT) / (total_questions * 2) * 100, 2) as percentage
       FROM candidates
+      WHERE is_admin = 0 OR is_admin IS NULL
       ORDER BY score DESC, time_taken ASC
     `);
     

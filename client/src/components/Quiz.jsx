@@ -20,7 +20,7 @@ const Quiz = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const navigate = useNavigate()
-  const autoSubmitRef = useRef(null)
+  const intervalRef = useRef(null)
 
   useEffect(() => {
     const candidateId = localStorage.getItem('candidateId')
@@ -33,8 +33,8 @@ const Quiz = () => {
   }, [])
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (timeStarted) {
+    if (timeStarted) {
+      intervalRef.current = setInterval(() => {
         const elapsed = Math.floor((Date.now() - timeStarted) / 1000)
         setTimeElapsed(elapsed)
         
@@ -43,12 +43,20 @@ const Quiz = () => {
           setTimeRemaining(remaining)
           
           if (remaining <= 0 && !isSubmitting) {
+            if (intervalRef.current) {
+              clearInterval(intervalRef.current)
+            }
             handleAutoSubmit()
           }
         }
+      }, 1000)
+    }
+    
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
       }
-    }, 1000)
-    return () => clearInterval(interval)
+    }
   }, [timeStarted, timeLimit, isSubmitting])
 
   const loadQuizData = async () => {
@@ -97,11 +105,17 @@ const Quiz = () => {
     if (isSubmitting) return
     setIsSubmitting(true)
     
+    // Afficher un message si c'est un auto-submit
+    if (timeLimit > 0 && timeRemaining <= 0) {
+      alert('Le temps imparti est écoulé. Vos réponses sont en cours d\'envoi...')
+    }
+    
     const candidateId = localStorage.getItem('candidateId')
     const candidateName = localStorage.getItem('candidateName')
     const candidateEmail = localStorage.getItem('candidateEmail')
     const candidateWhatsapp = localStorage.getItem('candidateWhatsapp')
 
+    // Soumettre toutes les questions, même celles non répondues (avec -1)
     const answersArray = questions.map(q => ({
       questionId: q.id,
       selectedAnswer: answers[q.id] !== undefined ? answers[q.id] : -1

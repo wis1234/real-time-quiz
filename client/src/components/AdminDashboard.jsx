@@ -15,6 +15,9 @@ const AdminDashboard = () => {
   const [editingUser, setEditingUser] = useState(null)
   const [quizSettings, setQuizSettings] = useState({ timeLimit: 0, showAnswers: false })
   const [showSettings, setShowSettings] = useState(false)
+  const [usersPage, setUsersPage] = useState(1)
+  const [questionsPage, setQuestionsPage] = useState(1)
+  const itemsPerPage = 10
   const navigate = useNavigate()
 
   const candidateId = localStorage.getItem('candidateId')
@@ -26,6 +29,9 @@ const AdminDashboard = () => {
       return
     }
     loadData()
+    // Réinitialiser les pages lors du changement d'onglet
+    setUsersPage(1)
+    setQuestionsPage(1)
   }, [activeTab])
 
   const loadData = async () => {
@@ -216,21 +222,29 @@ const AdminDashboard = () => {
             </button>
 
             <div className="users-table-wrapper">
-              <table className="users-table">
-                <thead>
-                  <tr>
-                    <th>Nom</th>
-                    <th>Email</th>
-                    <th>WhatsApp</th>
-                    <th>Score</th>
-                    <th>Temps</th>
-                    <th>Tentatives</th>
-                    <th>Admin</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map((user) => (
+              {(() => {
+                const usersTotalPages = Math.ceil(users.length / itemsPerPage)
+                const usersStartIndex = (usersPage - 1) * itemsPerPage
+                const usersEndIndex = usersStartIndex + itemsPerPage
+                const currentUsers = users.slice(usersStartIndex, usersEndIndex)
+                
+                return (
+                  <>
+                    <table className="users-table">
+                      <thead>
+                        <tr>
+                          <th>Nom</th>
+                          <th>Email</th>
+                          <th>WhatsApp</th>
+                          <th>Score</th>
+                          <th>Temps</th>
+                          <th>Tentatives</th>
+                          <th>Admin</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {currentUsers.map((user) => (
                     <tr key={user.id}>
                       <td>{user.name}</td>
                       <td>{user.email || 'N/A'}</td>
@@ -275,9 +289,33 @@ const AdminDashboard = () => {
                       </div>
                     </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                        ))}
+                      </tbody>
+                    </table>
+                    {usersTotalPages > 1 && (
+                      <div className="pagination">
+                        <button
+                          onClick={() => setUsersPage(prev => Math.max(1, prev - 1))}
+                          disabled={usersPage === 1}
+                          className="pagination-btn"
+                        >
+                          ← Précédent
+                        </button>
+                        <span className="pagination-info">
+                          Page {usersPage} sur {usersTotalPages} ({users.length} utilisateurs)
+                        </span>
+                        <button
+                          onClick={() => setUsersPage(prev => Math.min(usersTotalPages, prev + 1))}
+                          disabled={usersPage === usersTotalPages}
+                          className="pagination-btn"
+                        >
+                          Suivant →
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )
+              })()}
             </div>
           </motion.div>
         )}
@@ -298,8 +336,16 @@ const AdminDashboard = () => {
               ➕ Ajouter une question
             </button>
 
-            <div className="questions-grid">
-              {questions.map((question) => (
+            {(() => {
+              const questionsTotalPages = Math.ceil(questions.length / itemsPerPage)
+              const questionsStartIndex = (questionsPage - 1) * itemsPerPage
+              const questionsEndIndex = questionsStartIndex + itemsPerPage
+              const currentQuestions = questions.slice(questionsStartIndex, questionsEndIndex)
+              
+              return (
+                <>
+                  <div className="questions-grid">
+                    {currentQuestions.map((question) => (
                 <motion.div
                   key={question.id}
                   className="question-card"
@@ -340,8 +386,32 @@ const AdminDashboard = () => {
                     </div>
                   </div>
                 </motion.div>
-              ))}
-            </div>
+                    ))}
+                  </div>
+                  {questionsTotalPages > 1 && (
+                    <div className="pagination">
+                      <button
+                        onClick={() => setQuestionsPage(prev => Math.max(1, prev - 1))}
+                        disabled={questionsPage === 1}
+                        className="pagination-btn"
+                      >
+                        ← Précédent
+                      </button>
+                      <span className="pagination-info">
+                        Page {questionsPage} sur {questionsTotalPages} ({questions.length} questions)
+                      </span>
+                      <button
+                        onClick={() => setQuestionsPage(prev => Math.min(questionsTotalPages, prev + 1))}
+                        disabled={questionsPage === questionsTotalPages}
+                        className="pagination-btn"
+                      >
+                        Suivant →
+                      </button>
+                    </div>
+                  )}
+                </>
+              )
+            })()}
           </motion.div>
         )}
 

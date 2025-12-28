@@ -179,7 +179,7 @@ const CandidateDashboard = () => {
         >
           <h2>🏆 Classement Général</h2>
           <div className="leaderboard-mini">
-            {leaderboard.slice(0, 10).map((user, index) => {
+            {leaderboard.filter(u => !u.is_admin || u.is_admin !== 1).slice(0, 10).map((user, index) => {
               const isMe = user.id === candidateId
               return (
                 <div

@@ -10,6 +10,8 @@ const Results = () => {
   const location = useLocation()
   const [result, setResult] = useState(null)
   const [answerDetails, setAnswerDetails] = useState([])
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -75,6 +77,12 @@ const Results = () => {
       navigate('/')
     }
   }
+
+  // Pagination pour les réponses
+  const totalPages = Math.ceil(answerDetails.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const currentAnswers = answerDetails.slice(startIndex, endIndex)
 
   return (
     <div className="results-container">
@@ -158,7 +166,7 @@ const Results = () => {
           </div>
         </motion.div>
 
-        {/* Détails des réponses */}
+        {/* Détails des réponses avec pagination */}
         {answerDetails.length > 0 && (
           <motion.div
             className="answers-review"
@@ -166,44 +174,72 @@ const Results = () => {
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.8 }}
           >
-            <h3>📋 Détail des Réponses</h3>
+            <h3>📋 Détail des Réponses ({answerDetails.length} questions)</h3>
             <div className="answers-list">
-              {answerDetails.map((detail, index) => (
-                <div
-                  key={detail.questionId}
-                  className={`answer-item ${detail.isCorrect ? 'correct' : 'incorrect'}`}
-                >
-                  <div className="answer-question">
-                    <strong>Question {index + 1}:</strong> {detail.questionText}
+              {currentAnswers.map((detail, localIndex) => {
+                const globalIndex = startIndex + localIndex
+                return (
+                  <div
+                    key={detail.questionId}
+                    className={`answer-item ${detail.isCorrect ? 'correct' : 'incorrect'}`}
+                  >
+                    <div className="answer-question">
+                      <strong>Question {globalIndex + 1}:</strong> {detail.questionText}
+                    </div>
+                    <div className="answer-options">
+                      {detail.options.map((opt, idx) => {
+                        const isSelected = detail.selectedAnswer === idx
+                        const isCorrect = detail.correctAnswer === idx
+                        return (
+                          <div
+                            key={idx}
+                            className={`answer-option ${isSelected ? 'selected' : ''} ${isCorrect ? 'correct-option' : ''} ${isSelected && !isCorrect ? 'wrong-option' : ''}`}
+                          >
+                            <span className="option-letter">{String.fromCharCode(65 + idx)}</span>
+                            <span className="option-text">{opt}</span>
+                            {isCorrect && <span className="correct-mark">✓ Correcte</span>}
+                            {isSelected && !isCorrect && <span className="wrong-mark">✗ Votre choix</span>}
+                            {isSelected && isCorrect && <span className="correct-mark">✓ Votre choix (Correct)</span>}
+                          </div>
+                        )
+                      })}
+                    </div>
+                    <div className="answer-result">
+                      {detail.isCorrect ? (
+                        <span className="result-correct">✓ Correct (+{detail.points} points)</span>
+                      ) : detail.selectedAnswer === -1 ? (
+                        <span className="result-incorrect">✗ Non répondu (0 point)</span>
+                      ) : (
+                        <span className="result-incorrect">✗ Incorrect (0 point)</span>
+                      )}
+                    </div>
                   </div>
-                  <div className="answer-options">
-                    {detail.options.map((opt, idx) => {
-                      const isSelected = detail.selectedAnswer === idx
-                      const isCorrect = detail.correctAnswer === idx
-                      return (
-                        <div
-                          key={idx}
-                          className={`answer-option ${isSelected ? 'selected' : ''} ${isCorrect ? 'correct-option' : ''} ${isSelected && !isCorrect ? 'wrong-option' : ''}`}
-                        >
-                          <span className="option-letter">{String.fromCharCode(65 + idx)}</span>
-                          <span className="option-text">{opt}</span>
-                          {isCorrect && <span className="correct-mark">✓ Correcte</span>}
-                          {isSelected && !isCorrect && <span className="wrong-mark">✗ Votre choix</span>}
-                          {isSelected && isCorrect && <span className="correct-mark">✓ Votre choix (Correct)</span>}
-                        </div>
-                      )
-                    })}
-                  </div>
-                  <div className="answer-result">
-                    {detail.isCorrect ? (
-                      <span className="result-correct">✓ Correct (+{detail.points} points)</span>
-                    ) : (
-                      <span className="result-incorrect">✗ Incorrect (0 point)</span>
-                    )}
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="pagination">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="pagination-btn"
+                >
+                  ← Précédent
+                </button>
+                <span className="pagination-info">
+                  Page {currentPage} sur {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className="pagination-btn"
+                >
+                  Suivant →
+                </button>
+              </div>
+            )}
           </motion.div>
         )}
 
