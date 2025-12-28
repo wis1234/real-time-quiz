@@ -2,12 +2,16 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import axios from 'axios'
+import io from 'socket.io-client'
 import './AdminDashboard.css'
 
+const socket = io('http://localhost:5000')
+
 const AdminDashboard = () => {
-  const [activeTab, setActiveTab] = useState('users') // 'users' ou 'questions'
+  const [activeTab, setActiveTab] = useState('users') // 'users', 'questions', 'leaderboard', 'settings'
   const [users, setUsers] = useState([])
   const [questions, setQuestions] = useState([])
+  const [liveLeaderboard, setLiveLeaderboard] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [showQuestionForm, setShowQuestionForm] = useState(false)
   const [editingQuestion, setEditingQuestion] = useState(null)
@@ -17,6 +21,7 @@ const AdminDashboard = () => {
   const [showSettings, setShowSettings] = useState(false)
   const [usersPage, setUsersPage] = useState(1)
   const [questionsPage, setQuestionsPage] = useState(1)
+  const [leaderboardPage, setLeaderboardPage] = useState(1)
   const itemsPerPage = 10
   const navigate = useNavigate()
 
@@ -32,6 +37,20 @@ const AdminDashboard = () => {
     // Réinitialiser les pages lors du changement d'onglet
     setUsersPage(1)
     setQuestionsPage(1)
+    setLeaderboardPage(1)
+  }, [activeTab])
+
+  useEffect(() => {
+    // Écouter les mises à jour du classement en temps réel
+    socket.on('scores-updated', () => {
+      if (activeTab === 'leaderboard') {
+        loadLiveLeaderboard()
+      }
+    })
+
+    return () => {
+      socket.off('scores-updated')
+    }
   }, [activeTab])
 
   const loadData = async () => {
@@ -43,6 +62,8 @@ const AdminDashboard = () => {
       } else if (activeTab === 'questions') {
         const response = await axios.post('http://localhost:5000/api/admin/questions', { candidateId })
         setQuestions(response.data)
+      } else if (activeTab === 'leaderboard') {
+        await loadLiveLeaderboard()
       } else if (activeTab === 'settings') {
         const response = await axios.post('http://localhost:5000/api/admin/settings', { candidateId })
         setQuizSettings({
@@ -57,6 +78,16 @@ const AdminDashboard = () => {
       }
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const loadLiveLeaderboard = async () => {
+    try {
+      const response = await axios.get('http://localhost:5000/api/scores/all')
+      const filteredScores = response.data.filter(score => !score.is_admin || score.is_admin !== 1)
+      setLiveLeaderboard(filteredScores)
+    } catch (error) {
+      console.error('Erreur lors du chargement du classement:', error)
     }
   }
 
@@ -195,6 +226,12 @@ const AdminDashboard = () => {
           onClick={() => setActiveTab('questions')}
         >
           ❓ Questions ({questions.length})
+        </button>
+        <button
+          className={activeTab === 'leaderboard' ? 'active' : ''}
+          onClick={() => setActiveTab('leaderboard')}
+        >
+          🏆 Classement Live ({liveLeaderboard.length})
         </button>
         <button
           className={activeTab === 'settings' ? 'active' : ''}
@@ -454,6 +491,118 @@ const AdminDashboard = () => {
                 💾 Enregistrer les paramètres
               </button>
             </div>
+          </motion.div>
+        )}
+
+        {activeTab === 'leaderboard' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="leaderboard-section"
+          >
+            <h2>🏆 Classement Live des Candidats</h2>
+            <div className="live-indicator">
+              <span className="live-dot">🔴</span>
+              <span>Mises à jour en temps réel</span>
+            </div>
+
+            {(() => {
+              const leaderboardTotalPages = Math.ceil(liveLeaderboard.length / itemsPerPage)
+              const leaderboardStartIndex = (leaderboardPage - 1) * itemsPerPage
+              const leaderboardEndIndex = leaderboardStartIndex + itemsPerPage
+              const currentLeaderboard = liveLeaderboard.slice(leaderboardStartIndex, leaderboardEndIndex)
+              const displayIndex = leaderboardStartIndex
+
+              return (
+                <>
+                  <div className="live-leaderboard">
+                    {currentLeaderboard.map((score, localIndex) => {
+                      const globalIndex = displayIndex + localIndex
+                      const getRankIcon = (index) => {
+                        if (index === 0) return '🥇'
+                        if (index === 1) return '🥈'
+                        if (index === 2) return '🥉'
+                        return `#${index + 1}`
+                      }
+
+                      const getRankColor = (index) => {
+                        if (index === 0) return '#ffd700'
+                        if (index === 1) return '#c0c0c0'
+                        if (index === 2) return '#cd7f32'
+                        return '#00b4d8'
+                      }
+
+                      const formatTime = (seconds) => {
+                        if (!seconds) return 'N/A'
+                        const mins = Math.floor(seconds / 60)
+                        const secs = seconds % 60
+                        return `${mins}m ${secs}s`
+                      }
+
+                      return (
+                        <motion.div
+                          key={score.id}
+                          className={`live-score-item ${globalIndex < 3 ? 'top-three' : ''}`}
+                          initial={{ opacity: 0, x: -50 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: 50 }}
+                          transition={{ delay: localIndex * 0.05 }}
+                          whileHover={{ scale: 1.02, x: 5 }}
+                        >
+                          <div className="rank-badge" style={{ background: getRankColor(globalIndex) }}>
+                            {getRankIcon(globalIndex)}
+                          </div>
+                          <div className="score-info">
+                            <div className="score-name">{score.name || 'Anonyme'}</div>
+                            <div className="score-details">
+                              <span className="score-email">{score.email || 'Pas d\'email'}</span>
+                              <span className="score-time">⏱️ {formatTime(score.time_taken)}</span>
+                            </div>
+                          </div>
+                          <div className="score-stats">
+                            <div className="score-percentage">
+                              {parseFloat(score.percentage || 0).toFixed(1)}%
+                            </div>
+                            <div className="score-points">
+                              {score.score} / {score.total_questions * 2} pts
+                            </div>
+                          </div>
+                          <motion.div
+                            className="score-bar"
+                            initial={{ width: 0 }}
+                            animate={{ width: `${score.percentage || 0}%` }}
+                            transition={{ delay: localIndex * 0.05 + 0.3, duration: 0.5 }}
+                            style={{ background: getRankColor(globalIndex) }}
+                          />
+                        </motion.div>
+                      )
+                    })}
+                  </div>
+
+                  {leaderboardTotalPages > 1 && (
+                    <div className="pagination">
+                      <button
+                        onClick={() => setLeaderboardPage(prev => Math.max(1, prev - 1))}
+                        disabled={leaderboardPage === 1}
+                        className="pagination-btn"
+                      >
+                        ← Précédent
+                      </button>
+                      <span className="pagination-info">
+                        Page {leaderboardPage} sur {leaderboardTotalPages} ({liveLeaderboard.length} candidats)
+                      </span>
+                      <button
+                        onClick={() => setLeaderboardPage(prev => Math.min(leaderboardTotalPages, prev + 1))}
+                        disabled={leaderboardPage === leaderboardTotalPages}
+                        className="pagination-btn"
+                      >
+                        Suivant →
+                      </button>
+                    </div>
+                  )}
+                </>
+              )
+            })()}
           </motion.div>
         )}
       </div>

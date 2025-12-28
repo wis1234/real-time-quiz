@@ -19,8 +19,80 @@ const Quiz = () => {
   const [timeRemaining, setTimeRemaining] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [quizSessionId, setQuizSessionId] = useState(null)
   const navigate = useNavigate()
   const intervalRef = useRef(null)
+
+  // Sauvegarder l'état du quiz
+  const saveQuizState = () => {
+    if (quizSessionId && timeStarted) {
+      const quizState = {
+        questions,
+        showAnswers,
+        currentQuestionIndex,
+        answers,
+        timeStarted,
+        timeElapsed,
+        timeLimit,
+        quizSessionId,
+        timestamp: Date.now()
+      }
+      localStorage.setItem('quizState', JSON.stringify(quizState))
+    }
+  }
+
+  // Restaurer l'état du quiz
+  const loadQuizState = () => {
+    const savedState = localStorage.getItem('quizState')
+    if (savedState) {
+      try {
+        const quizState = JSON.parse(savedState)
+        const candidateId = localStorage.getItem('candidateId')
+
+        // Vérifier si c'est la même session utilisateur et si elle est récente (moins de 2 heures)
+        const twoHours = 2 * 60 * 60 * 1000
+        if (quizState.quizSessionId &&
+            quizState.quizSessionId.includes(candidateId) &&
+            Date.now() - quizState.timestamp < twoHours) {
+
+          setQuestions(quizState.questions || [])
+          setShowAnswers(quizState.showAnswers || false)
+          setCurrentQuestionIndex(quizState.currentQuestionIndex || 0)
+          setAnswers(quizState.answers || {})
+          setTimeStarted(quizState.timeStarted)
+          setTimeElapsed(quizState.timeElapsed || 0)
+          setTimeLimit(quizState.timeLimit || 0)
+          setQuizSessionId(quizState.quizSessionId)
+
+          // Calculer le temps écoulé depuis la sauvegarde
+          const now = Date.now()
+          const elapsedSinceSave = Math.floor((now - quizState.timestamp) / 1000)
+          const newElapsed = (quizState.timeElapsed || 0) + elapsedSinceSave
+
+          // Mettre à jour le temps restant si limite de temps
+          if (quizState.timeLimit > 0) {
+            const remaining = quizState.timeLimit - newElapsed
+            setTimeRemaining(Math.max(0, remaining))
+          }
+
+          setIsLoading(false)
+          return true
+        } else {
+          // État trop ancien ou session différente, nettoyer
+          clearQuizState()
+        }
+      } catch (error) {
+        console.error('Erreur lors du chargement de l\'état du quiz:', error)
+        clearQuizState()
+      }
+    }
+    return false
+  }
+
+  // Nettoyer l'état du quiz
+  const clearQuizState = () => {
+    localStorage.removeItem('quizState')
+  }
 
   useEffect(() => {
     const candidateId = localStorage.getItem('candidateId')
@@ -28,8 +100,25 @@ const Quiz = () => {
       navigate('/login')
       return
     }
-    loadQuizData()
-    setTimeStarted(Date.now())
+
+    // Essayer de restaurer l'état du quiz
+    const stateRestored = loadQuizState()
+
+    if (!stateRestored) {
+      // Si pas d'état sauvegardé, charger les données normalement
+      loadQuizData()
+      const sessionId = `quiz_${candidateId}_${Date.now()}`
+      setQuizSessionId(sessionId)
+      setTimeStarted(Date.now())
+    } else {
+      // Restaurer le timer
+      const now = Date.now()
+      const savedTimeStarted = timeStarted
+      if (savedTimeStarted) {
+        const elapsedSinceStart = Math.floor((now - savedTimeStarted) / 1000)
+        setTimeElapsed(elapsedSinceStart)
+      }
+    }
   }, [])
 
   useEffect(() => {
@@ -37,11 +126,11 @@ const Quiz = () => {
       intervalRef.current = setInterval(() => {
         const elapsed = Math.floor((Date.now() - timeStarted) / 1000)
         setTimeElapsed(elapsed)
-        
+
         if (timeLimit > 0) {
           const remaining = timeLimit - elapsed
           setTimeRemaining(remaining)
-          
+
           if (remaining <= 0 && !isSubmitting) {
             if (intervalRef.current) {
               clearInterval(intervalRef.current)
@@ -49,9 +138,14 @@ const Quiz = () => {
             handleAutoSubmit()
           }
         }
+
+        // Sauvegarder l'état toutes les 10 secondes
+        if (elapsed % 10 === 0) {
+          saveQuizState()
+        }
       }, 1000)
     }
-    
+
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current)
@@ -87,17 +181,21 @@ const Quiz = () => {
       ...answers,
       [questionId]: answerIndex
     })
+    // Sauvegarder immédiatement après chaque réponse
+    setTimeout(saveQuizState, 100)
   }
 
   const handleNext = () => {
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1)
+      setTimeout(saveQuizState, 100)
     }
   }
 
   const handlePrevious = () => {
     if (currentQuestionIndex > 0) {
       setCurrentQuestionIndex(currentQuestionIndex - 1)
+      setTimeout(saveQuizState, 100)
     }
   }
 
@@ -132,6 +230,10 @@ const Quiz = () => {
       })
 
       socket.emit('submit-answer', { candidateId })
+
+      // Nettoyer l'état du quiz après soumission réussie
+      clearQuizState()
+
       navigate(`/results/${candidateId}`, { state: { answerDetails: response.data.answerDetails } })
     } catch (error) {
       console.error('Erreur lors de la soumission:', error)
@@ -173,6 +275,9 @@ const Quiz = () => {
 
   return (
     <div className="quiz-container">
+      <div className="quiz-warning">
+        ⚠️ <strong>Attention :</strong> Ne pas rafraîchir la page pendant le quiz. Vos réponses sont sauvegardées automatiquement.
+      </div>
       <div className="quiz-header">
         <Timer 
           timeElapsed={timeElapsed} 

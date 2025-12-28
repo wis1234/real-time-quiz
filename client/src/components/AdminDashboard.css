@@ -456,6 +456,119 @@
   box-shadow: 0 6px 20px rgba(0, 180, 216, 0.6);
 }
 
+.leaderboard-section {
+  padding: 20px;
+}
+
+.leaderboard-section h2 {
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.live-indicator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding: 10px 15px;
+  background: #e8f5e8;
+  border-radius: 8px;
+  border: 1px solid #28a745;
+}
+
+.live-dot {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.live-leaderboard {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.live-score-item {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 20px;
+  background: white;
+  border-radius: 12px;
+  border: 2px solid #e0e0e0;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.live-score-item.top-three {
+  border-color: #ffd700;
+  box-shadow: 0 4px 15px rgba(255, 215, 0, 0.2);
+}
+
+.live-score-item .rank-badge {
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: white;
+  flex-shrink: 0;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.live-score-item .score-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.live-score-item .score-name {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 5px;
+}
+
+.live-score-item .score-details {
+  display: flex;
+  gap: 15px;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.live-score-item .score-stats {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.live-score-item .score-percentage {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #00b4d8;
+  margin-bottom: 5px;
+}
+
+.live-score-item .score-points {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.live-score-item .score-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 4px;
+  border-radius: 0 0 10px 10px;
+  opacity: 0.3;
+}
+
 .pagination {
   display: flex;
   justify-content: center;
